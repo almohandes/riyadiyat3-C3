@@ -1,0 +1,22 @@
+{
+  "name": "riyadiyat-thalith",
+  "version": "1.0.0",
+  "private": true,
+  "description": "تطبيق تعليمي تفاعلي لكتاب الرياضيات للصف الثالث الابتدائي (العراق) مع كراس التمارين",
+  "scripts": {
+    "add:android": "cap add android",
+    "assets": "capacitor-assets generate --android --iconBackgroundColor '#1D2B53' --iconBackgroundColorDark '#1D2B53' --splashBackgroundColor '#F7FBFF' --splashBackgroundColorDark '#1D2B53'",
+    "sync": "cap sync android",
+    "test": "node tools/check-data.js"
+  },
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^4.1.1",
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0"
+  }
+}

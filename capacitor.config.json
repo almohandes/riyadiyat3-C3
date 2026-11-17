@@ -1,0 +1,11 @@
+{
+  "appId": "com.family.riyadiyat3",
+  "appName": "رياضيات الثالث",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#F7FBFF",
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "server": { "androidScheme": "https" }
+}
