@@ -11,24 +11,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node 20
+      - name: Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Set up Java 17
+      - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The runner already has the Android SDK preinstalled.
+      # (android-actions/setup-android is removed: it failed with "Failed to find package 'tools'")
+      - name: Android SDK (preinstalled) - accept licenses
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
 
       - name: Install packages
         run: npm install
@@ -44,29 +49,32 @@ jobs:
           npx capacitor-assets generate --android --iconBackgroundColor '#1D2B53' --iconBackgroundColorDark '#1D2B53' --splashBackgroundColor '#F7FBFF' --splashBackgroundColorDark '#1D2B53' || echo "assets skipped"
           npx cap sync android
 
-      - name: Set version number
+      - name: Version number
         run: |
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
           grep -E "versionCode|versionName" android/app/build.gradle
 
-      - name: Use fixed signing key (so updates install over the old app)
+      - name: Fixed signing key (update without uninstalling)
         run: |
-          mkdir -p ~/.android
-          if [ -f keystore/debug.keystore ]; then cp keystore/debug.keystore ~/.android/debug.keystore; fi
+          if [ -f keystore/debug.keystore ]; then
+            mkdir -p ~/.android
+            cp keystore/debug.keystore ~/.android/debug.keystore
+          fi
 
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Collect files
+      - name: Name the files
         run: |
           mkdir -p dist
           cp android/app/build/outputs/apk/debug/app-debug.apk "dist/riyadiyat3-v${{ github.run_number }}.apk"
-          if [ -f tools/build-single.py ]; then python3 tools/build-single.py; fi
+          if [ -f tools/build-single.py ]; then python3 tools/build-single.py || true; fi
+          ls -la dist
 
-      - name: Upload APK (Actions artifact)
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: riyadiyat3-apk
@@ -76,8 +84,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Riyadiyat 3 – build ${{ github.run_number }}
-          body: |
-            Download the APK below and install it on the phone or tablet.
-            (You may need to allow "Install from unknown sources".)
+          name: Riyadiyat 3 - build ${{ github.run_number }}
           files: dist/*
