@@ -1,0 +1,83 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install packages
+        run: npm install
+
+      - name: Check lesson data
+        run: |
+          if [ -f tools/check-data.js ]; then node tools/check-data.js; fi
+
+      - name: Create Android project
+        run: |
+          rm -rf android
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#1D2B53' --iconBackgroundColorDark '#1D2B53' --splashBackgroundColor '#F7FBFF' --splashBackgroundColorDark '#1D2B53' || echo "assets skipped"
+          npx cap sync android
+
+      - name: Set version number
+        run: |
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+
+      - name: Use fixed signing key (so updates install over the old app)
+        run: |
+          mkdir -p ~/.android
+          if [ -f keystore/debug.keystore ]; then cp keystore/debug.keystore ~/.android/debug.keystore; fi
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Collect files
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk "dist/riyadiyat3-v${{ github.run_number }}.apk"
+          if [ -f tools/build-single.py ]; then python3 tools/build-single.py; fi
+
+      - name: Upload APK (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: riyadiyat3-apk
+          path: dist/*
+
+      - name: Publish Release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Riyadiyat 3 – build ${{ github.run_number }}
+          body: |
+            Download the APK below and install it on the phone or tablet.
+            (You may need to allow "Install from unknown sources".)
+          files: dist/*
