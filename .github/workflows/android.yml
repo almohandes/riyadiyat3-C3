@@ -15,6 +15,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # If the folders were not uploaded, extract them from the zip uploaded to the repo
+      - name: Prepare project files
+        run: |
+          if [ ! -f www/index.html ]; then
+            Z=$(ls *.zip 2>/dev/null | head -1)
+            if [ -n "$Z" ]; then
+              echo "www missing -> extracting $Z"
+              mkdir -p /tmp/src && unzip -q -o "$Z" -d /tmp/src
+              ROOT=$(dirname "$(find /tmp/src -name index.html -path '*www/index.html' | head -1)")/..
+              cp -rn "$ROOT"/. .
+            fi
+          fi
+          if [ ! -f www/index.html ]; then
+            echo "::error::Folder www/index.html is missing from the repo. Upload the www and assets folders (or riyadiyat3-app.zip) to the repo root."
+            ls -la
+            exit 1
+          fi
+          ls -la www
+
       - name: Node 20
         uses: actions/setup-node@v4
         with:
